@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Model i dane (generowane lokalnie)
+ml/model.joblib
+data/dataset.npz
+
+# Kalibracja (per-user, nie commitujemy)
+calibration/thresholds.json
+
+# Środowisko
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+
+# System
+.DS_Store
+Thumbs.db
