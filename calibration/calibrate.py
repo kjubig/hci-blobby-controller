@@ -122,10 +122,22 @@ def calibrate_player(camera_id: int, player_label: str,
         thresholds["brow_neutral"] = float(brow_neutral)
 
     if left_samples and neutral:
+        yaw_neutral_val = thresholds.get("yaw_neutral", 0)
         yaw_left = np.mean([s["yaw"] for s in left_samples])
-        # Próg = w połowie między neutral a pełnym skrętem
-        gap = abs(yaw_left - thresholds.get("yaw_neutral", 0))
-        thresholds["yaw_threshold"] = float(gap * 0.5)
+        gap_left = abs(yaw_left - yaw_neutral_val)
+
+        if right_samples:
+            # Użyj obu stron — symetria głowy rzadko jest idealna
+            yaw_right = np.mean([s["yaw"] for s in right_samples])
+            gap_right = abs(yaw_right - yaw_neutral_val)
+            avg_gap = (gap_left + gap_right) / 2.0
+            print(f"[Kalibracja] gap_left={gap_left:.4f}  gap_right={gap_right:.4f}  avg={avg_gap:.4f}")
+        else:
+            avg_gap = gap_left
+            print(f"[Kalibracja] gap_left={gap_left:.4f} (brak prawej strony — używam tylko lewej)")
+
+        # Próg = 50% średniego zakresu ruchu
+        thresholds["yaw_threshold"] = float(avg_gap * 0.5)
 
     if jump_samples and neutral:
         brow_jump = np.mean(

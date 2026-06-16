@@ -43,8 +43,13 @@ class GestureDetectorP1:
     CHIN = 152
 
     def __init__(self, yaw_threshold: float = DEFAULT_YAW_THRESHOLD,
-                 smoothing: int = SMOOTHING_WINDOW):
+                 smoothing: int = SMOOTHING_WINDOW,
+                 mirror: bool = False):
         self.yaw_threshold = yaw_threshold
+        # mirror=True gdy kamera daje obraz odwrócony (lustrzany, jak selfie).
+        # mirror=False (domyślnie) dla surowego obrazu OpenCV z kamery USB/laptopa.
+        # Jeśli ruch głowy w lewo porusza blobbem w prawo — ustaw mirror=True.
+        self.mirror = mirror
         self._history = deque(maxlen=smoothing)
 
     def compute_yaw_offset(self, landmarks: dict) -> float:
@@ -80,14 +85,19 @@ class GestureDetectorP1:
         smoothed = np.mean(self._history)
 
         if smoothed > self.yaw_threshold:
-            # Nos w prawo kamery = gracz obrócił głowę w lewo (ruch postaci w lewo)
-            return ActionP1.LEFT
+            # Nos w prawo kamery = głowa w lewo (zakładamy obraz NIE-lustrzany)
+            return ActionP1.RIGHT if self.mirror else ActionP1.LEFT
         elif smoothed < -self.yaw_threshold:
-            return ActionP1.RIGHT
+            return ActionP1.LEFT if self.mirror else ActionP1.RIGHT
         else:
             return ActionP1.IDLE
 
     def set_threshold(self, threshold: float):
         """Aktualizuje próg — wywoływane przez moduł kalibracji."""
         self.yaw_threshold = threshold
+        self._history.clear()
+
+    def set_mirror(self, mirror: bool):
+        """Przełącza tryb lustrzany. Wywołaj jeśli LEFT/RIGHT są zamienione."""
+        self.mirror = mirror
         self._history.clear()
