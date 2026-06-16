@@ -5,8 +5,8 @@ __pycache__/
 .Python
 
 # Model i dane (generowane lokalnie)
-ml/model.joblib
-data/dataset.npz
+#ml/model.joblib
+#data/dataset.npz
 
 # Kalibracja (per-user, nie commitujemy)
 calibration/thresholds.json

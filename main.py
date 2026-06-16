@@ -49,8 +49,6 @@ def main():
     print("=" * 55)
 
     # --- Inicjalizacja modułów ---
-    detector_p1 = FaceMeshDetector(camera_id=args.cam_p1)
-    detector_p2 = FaceMeshDetector(camera_id=args.cam_p2)
     gesture_p1 = GestureDetectorP1()
     gesture_p2 = GestureDetectorP2()
     classifier = SpecialGestureClassifier(threshold=0.75)
@@ -58,17 +56,24 @@ def main():
     overlay = Overlay()
 
     # --- Otwórz kamery ---
+    # Jeśli oba ID są takie same — jedna instancja dla obu graczy
+    p2_same_cam = (args.cam_p1 == args.cam_p2)
+
+    detector_p1 = FaceMeshDetector(camera_id=args.cam_p1)
     if not detector_p1.open_camera():
         print(f"BŁĄD: Nie można otworzyć kamery P1 ({args.cam_p1})")
         print("Spróbuj --cam-p1 z innym numerem.")
         sys.exit(1)
 
-    # Kamera P2 — fallback: używamy tej samej kamery jeśli druga niedostępna
-    p2_same_cam = False
-    if not detector_p2.open_camera():
-        print(f"UWAGA: Kamera P2 ({args.cam_p2}) niedostępna. Używam kamery P1 dla obu graczy.")
+    if p2_same_cam:
+        print(f"[Main] P1 i P2 używają tej samej kamery ({args.cam_p1}).")
         detector_p2 = detector_p1
-        p2_same_cam = True
+    else:
+        detector_p2 = FaceMeshDetector(camera_id=args.cam_p2)
+        if not detector_p2.open_camera():
+            print(f"UWAGA: Kamera P2 ({args.cam_p2}) niedostępna. Używam kamery P1 dla obu graczy.")
+            detector_p2 = detector_p1
+            p2_same_cam = True
 
     # --- Kalibracja ---
     if not args.no_calibrate:
