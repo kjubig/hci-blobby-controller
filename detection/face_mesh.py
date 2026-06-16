@@ -1,45 +1,65 @@
 """
-face_mesh.py — wrapper MediaPipe FaceMesh.
-Zwraca 468 znormalizowanych landmarków twarzy dla jednej kamery.
+face_mesh.py — wrapper MediaPipe FaceLandmarker (Tasks API, mediapipe ≥ 0.10.x).
+
+Nowe API nie ma mp.solutions — używamy mediapipe.tasks.python.vision.FaceLandmarker.
+Model face_landmarker.task pobierany automatycznie przy pierwszym uruchomieniu.
 """
 
+import os
+import time
+import urllib.request
 import cv2
 import mediapipe as mp
 import numpy as np
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
+
+# Model FaceLandmarker — pobierany automatycznie jeśli nie istnieje
+_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/"
+    "face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "face_landmarker.task")
+
+
+def _ensure_model():
+    """Pobiera plik modelu jeśli nie istnieje lokalnie."""
+    if not os.path.exists(MODEL_PATH):
+        print(f"[FaceMesh] Pobieranie modelu FaceLandmarker (~30 MB)...")
+        urllib.request.urlretrieve(_MODEL_URL, MODEL_PATH)
+        print(f"[FaceMesh] Model zapisany → {MODEL_PATH}")
 
 
 class FaceMeshDetector:
-    """Inicjalizuje MediaPipe FaceMesh i przetwarza klatki wideo."""
+    """Inicjalizuje MediaPipe FaceLandmarker (Tasks API) i przetwarza klatki wideo."""
 
-    # Kluczowe indeksy landmarków MediaPipe FaceMesh
-    # Lewe oko (z perspektywy kamery)
-    LEFT_EYE = [362, 385, 387, 263, 373, 380]
-    # Prawe oko (z perspektywy kamery)
+    # Kluczowe indeksy landmarków — identyczne jak w starym FaceMesh (468 punktów)
+    LEFT_EYE  = [362, 385, 387, 263, 373, 380]
     RIGHT_EYE = [33, 160, 158, 133, 153, 144]
-    # Lewa brew
-    LEFT_BROW = [336, 296, 334, 293, 300]
-    # Prawa brew
+    LEFT_BROW  = [336, 296, 334, 293, 300]
     RIGHT_BROW = [70, 63, 105, 66, 107]
-    # Usta (zewnętrzne)
     MOUTH_OUTER = [61, 291, 0, 17, 269, 405, 314, 82, 87, 178, 88, 95]
-    # Punkty do estymacji pozy głowy
-    HEAD_POSE_POINTS = [1, 9, 57, 130, 287, 359]  # nos, podbródek, rogi ust, rogi oczu
+    HEAD_POSE_POINTS = [1, 9, 57, 130, 287, 359]
 
     def __init__(self, camera_id: int = 0, max_faces: int = 1,
                  min_detection_confidence: float = 0.7,
                  min_tracking_confidence: float = 0.7):
         self.camera_id = camera_id
         self.cap = None
+        self._start_ms = time.monotonic() * 1000  # punkt startowy dla timestampów
 
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=max_faces,
-            refine_landmarks=True,
-            min_detection_confidence=min_detection_confidence,
+        _ensure_model()
+
+        base_options = mp_python.BaseOptions(model_asset_path=MODEL_PATH)
+        options = mp_vision.FaceLandmarkerOptions(
+            base_options=base_options,
+            running_mode=mp_vision.RunningMode.VIDEO,
+            num_faces=max_faces,
+            min_face_detection_confidence=min_detection_confidence,
+            min_face_presence_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence,
         )
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
+        self._landmarker = mp_vision.FaceLandmarker.create_from_options(options)
 
     def open_camera(self) -> bool:
         self.cap = cv2.VideoCapture(self.camera_id)
@@ -53,51 +73,53 @@ class FaceMeshDetector:
         return True
 
     def read_frame(self):
-        """Odczytuje klatkę z kamery. Zwraca (success, frame)."""
+        """Odczytuje klatkę z kamery. Zwraca (success, frame_bgr)."""
         if self.cap is None:
             return False, None
         return self.cap.read()
 
     def process(self, frame: np.ndarray):
         """
-        Przetwarza klatkę BGR i zwraca wyniki MediaPipe.
-        Zwraca (landmarks_list, results) gdzie landmarks_list to lista
-        słowników {idx: (x, y, z)} dla każdej wykrytej twarzy.
+        Przetwarza klatkę BGR i zwraca (landmarks_list, raw_result).
+        landmarks_list — lista słowników {idx: (x_px, y_px, z)} dla każdej twarzy.
+        raw_result     — surowy obiekt FaceLandmarkerResult (do rysowania).
         """
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = self.face_mesh.process(rgb)
-        rgb.flags.writeable = True
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+
+        # detect_for_video wymaga rosnącego timestampu w ms (rzeczywisty czas)
+        ts_ms = int(time.monotonic() * 1000 - self._start_ms) + 1
+        result = self._landmarker.detect_for_video(mp_image, ts_ms)
 
         landmarks_list = []
-        if results.multi_face_landmarks:
+        if result.face_landmarks:
             h, w = frame.shape[:2]
-            for face_lms in results.multi_face_landmarks:
-                lm_dict = {}
-                for idx, lm in enumerate(face_lms.landmark):
-                    lm_dict[idx] = (lm.x * w, lm.y * h, lm.z)
+            for face_lms in result.face_landmarks:
+                lm_dict = {
+                    idx: (lm.x * w, lm.y * h, lm.z)
+                    for idx, lm in enumerate(face_lms)
+                }
                 landmarks_list.append(lm_dict)
 
-        return landmarks_list, results
+        return landmarks_list, result
 
     def draw_landmarks(self, frame: np.ndarray, results) -> np.ndarray:
-        """Rysuje siatkę landmarków na klatce (do debugowania)."""
-        if results.multi_face_landmarks:
-            for face_lms in results.multi_face_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    image=frame,
-                    landmark_list=face_lms,
-                    connections=self.mp_face_mesh.FACEMESH_TESSELATION,
-                    landmark_drawing_spec=None,
-                    connection_drawing_spec=self.mp_drawing_styles
-                    .get_default_face_mesh_tesselation_style()
-                )
+        """Rysuje kluczowe punkty oczu/ust na klatce (do debugowania)."""
+        if not results.face_landmarks:
+            return frame
+        h, w = frame.shape[:2]
+        for face_lms in results.face_landmarks:
+            for idx in (self.LEFT_EYE + self.RIGHT_EYE +
+                        self.LEFT_BROW + self.RIGHT_BROW + self.MOUTH_OUTER):
+                lm = face_lms[idx]
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
         return frame
 
     def release(self):
         if self.cap:
             self.cap.release()
-        self.face_mesh.close()
+        self._landmarker.close()
 
 
 def euclidean(p1, p2) -> float:
