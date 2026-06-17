@@ -26,6 +26,8 @@ from sklearn.metrics import (
     confusion_matrix,
     precision_score,
 )
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

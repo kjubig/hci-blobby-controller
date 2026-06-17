@@ -50,24 +50,27 @@ LEFT / RIGHT / IDLE         JUMP / SPECIAL / IDLE
 
 ```
 MICM PROJEKT/
-├── main.py                    ← główna pętla (uruchamiasz to)
+├── main.py                         ← główna pętla (uruchamiasz to)
 ├── requirements.txt
 ├── detection/
-│   ├── face_mesh.py           ← wrapper MediaPipe + funkcje EAR/MAR/brow
-│   ├── gestures_p1.py         ← detekcja ruchu głową (P1)
-│   └── gestures_p2.py         ← detekcja brwi/ust + wektor cech dla ML (P2)
+│   ├── face_mesh.py                ← wrapper MediaPipe + funkcje EAR/MAR/brow
+│   ├── gestures_p1.py              ← detekcja ruchu głową (P1)
+│   └── gestures_p2.py              ← detekcja brwi/ust + wektor cech dla ML (P2)
 ├── ml/
-│   ├── collect_dataset.py     ← zbieranie datasetu (Space = idle, Enter = special)
-│   ├── train_model.py         ← trening SVM + MLP, walidacja StratifiedKFold(5)
-│   └── classifier.py          ← runtime wrapper wytrenowanego modelu
+│   ├── collect_dataset.py          ← zbieranie datasetu (Space = idle, Enter = special)
+│   ├── train_model.py              ← trening SVM + MLP, walidacja StratifiedKFold(5)
+│   └── classifier.py               ← runtime wrapper wytrenowanego modelu
 ├── control/
-│   └── key_controller.py      ← maszyna stanów + pynput, throttle 50ms
+│   └── key_controller.py           ← maszyna stanów + pynput, throttle 50ms
 ├── ui/
-│   └── overlay.py             ← wizualizacja: kamery, akcje, pasek ML, FPS
+│   └── overlay.py                  ← wizualizacja: kamery, akcje, pasek ML, FPS
 ├── calibration/
-│   └── calibrate.py           ← kalibracja progów per-użytkownik
-└── data/
-    └── dataset.npz            ← (generowany) dataset do treningu
+│   └── calibrate.py                ← kalibracja progów per-użytkownik
+├── data/
+│   └── dataset.npz                 ← (generowany) dataset do treningu
+└── tools/
+    ├── check_dataset.py            ← sprawdza, czy próbki mają asymetrię EAR
+    └── test_key_controller.py      ← test wysyłania zdarzeń przez KeyControllera
 ```
 
 ---
@@ -166,6 +169,21 @@ Wyniki zapisywane do `calibration/thresholds.json`.
 | Throttle klawiszy | 50ms |
 | Wygładzanie akcji | okno 4–5 klatek |
 | Cel latencji | < 200ms |
+
+---
+
+## Narzędzia developerskie (tools/)
+
+- **check_dataset.py** — diagnostyka jakości datasetu: sprawdza, czy próbki
+  SPECIAL mają wyraźną asymetrię EAR (wink), a próbki IDLE są neutralne.
+  Pomaga wykryć błędnie oznaczone próbki przed treningiem.
+  Uruchom: `python3 tools/check_dataset.py`
+
+- **test_key_controller.py** — testuje KeyController (symulację klawiszy)
+  bez kamery i bez gry, używając niezależnego pynput.Listener jako
+  "świadka" zdarzeń systemowych. Przydatne do diagnozowania, czy problem
+  z brakiem reakcji gry leży w kodzie Pythona czy w samej przeglądarce/grze.
+  Uruchom: `python3 tools/test_key_controller.py`
 
 ---
 

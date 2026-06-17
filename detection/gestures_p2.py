@@ -136,7 +136,7 @@ class GestureDetectorP2:
 
         features = self.get_features(landmarks)
 
-        if ml_special:
+        if ml_special and features["mar"] < self.mar_threshold:
             return ActionP2.SPECIAL
 
         if self._detect_jump(features):

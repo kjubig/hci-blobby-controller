@@ -135,10 +135,10 @@ class Overlay:
 
         # --- Klawisze ---
         keys_info = [
-            ("← LEWO", key_state.get("LEFT", False)),
-            ("PRAWO →", key_state.get("RIGHT", False)),
-            ("SKOK ↑", key_state.get("JUMP", False)),
-            ("★ SPECIAL", key_state.get("SPECIAL", False)),
+            ("<<< LEWO", key_state.get("LEFT", False)),
+            ("PRAWO >>>", key_state.get("RIGHT", False)),
+            ("SKOK ^", key_state.get("JUMP", False)),
+            ("* SPECIAL", key_state.get("SPECIAL", False)),
         ]
 
         box_w = (CAM_W * 2) // len(keys_info)
