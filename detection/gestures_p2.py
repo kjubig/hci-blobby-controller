@@ -31,7 +31,7 @@ class ActionP2(Enum):
 DEFAULT_BROW_THRESHOLD = 1.10    # uniesienie brwi (brow_height ratio)
 DEFAULT_MAR_THRESHOLD = 0.55     # otwarcie ust
 DEFAULT_EAR_OPEN = 0.20          # minimalne EAR dla oka otwartego
-SMOOTHING_WINDOW = 4
+SMOOTHING_WINDOW = 2
 
 
 class GestureDetectorP2:

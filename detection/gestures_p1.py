@@ -20,7 +20,7 @@ class ActionP1(Enum):
 
 # Domyślne progi — kalibracja może je nadpisać
 DEFAULT_YAW_THRESHOLD = 0.07   # znormalizowany offset nosa względem środka twarzy
-SMOOTHING_WINDOW = 5            # liczba klatek do wygładzania
+SMOOTHING_WINDOW = 3            # liczba klatek do wygładzania (mniej = szybsza reakcja)
 
 
 class GestureDetectorP1:

@@ -69,6 +69,7 @@ class FaceMeshDetector:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # minimalizuj buforowanie klatek
         print(f"[FaceMesh] Kamera {self.camera_id} otwarta.")
         return True
 
